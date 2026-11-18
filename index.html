@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#121412" />
+  <meta name="description" content="عدّاد الرديف للجيش والشرطة — متتبّق بسيط للخدمة العسكرية حسب الدفعة أو شهر الدخول، مع آية كل يوم. يعمل بدون اتصال." />
+  <meta name="author" content="Eid Yasser (0x3id)" />
+  <meta name="keywords" content="الرديف, عداد الرديف, الجيش المصري, الشرطة المصرية, الداخلية, العد الميري, الدفعة, الخدمة العسكرية, countdown, PWA" />
+  <meta name="robots" content="index, follow" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="عدّاد الرديف" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="عدّاد الجيش والشرطة | الرديف" />
+  <meta property="og:description" content="تابع الأيام المتبقية للرديف حسب دفعتك أو شهر دخولك، مع آية كل يوم." />
+  <meta property="og:image" content="icon-512.png" />
+  <meta property="og:locale" content="ar_EG" />
+  <meta name="twitter:card" content="summary" />
+  <title>عدّاد الجيش والشرطة | El-Geish &amp; El-Shorta Countdown</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind via CDN (progressive enhancement — all styling also lives below) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: {
+      colors: { charcoal: '#121412', olive: '#3B4D36', navy: '#2b3f57', gold: '#D4AF37' },
+      fontFamily: { cairo: ['Cairo', 'sans-serif'], amiri: ['Amiri', 'serif'] }
+    } } };
+  </script>
+
+  <style>
+    /* ===================================================================
+       Design tokens — charcoal base, olive (army) / navy (police), gold
+       =================================================================== */
+    :root {
+      --bg:        #121412;
+      --surface:   rgba(28, 34, 28, .72);
+      --surface-2: rgba(10, 13, 10, .55);
+      --line:      rgba(92, 120, 82, .34);
+      --line-hi:   rgba(142, 168, 122, .55);
+      --accent:      #8ea87a;   /* olive — army */
+      --accent-deep: #3B4D36;
+      --accent-rgb:  142, 168, 122;
+      --cta-a: #9fb886;
+      --cta-b: #6f8b5b;
+      --gold:      #D4AF37;
+      --gold-soft: #e8cb76;
+      --text:      #ecefe8;
+      --muted:     #98a293;
+      --faint:     #72806e;
+      --ease:      cubic-bezier(.22, 1, .36, 1);
+      --r:         20px;
+    }
+    /* Police mode swaps the whole accent family to navy-blue */
+    :root[data-authority="police"] {
+      --line:        rgba(92, 124, 158, .36);
+      --line-hi:     rgba(136, 166, 200, .58);
+      --accent:      #88a6c8;
+      --accent-deep: #2b3f57;
+      --accent-rgb:  136, 166, 200;
+      --cta-a: #9db9d7;
+      --cta-b: #587897;
+      --surface:   rgba(24, 31, 38, .74);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+      font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      font-size: 15px; line-height: 1.65; -webkit-font-smoothing: antialiased; overflow-x: hidden;
+      transition: background .5s ease;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .hidden { display: none !important; }
+    .mono { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+    ::selection { background: var(--accent); color: #121412; }
+
+    .ambient {
+      position: fixed; inset: 0; z-index: -1; pointer-events: none; transition: background .6s ease;
+      background:
+        radial-gradient(ellipse 75% 42% at 50% -10%, rgba(var(--accent-rgb), .26), transparent 72%),
+        radial-gradient(ellipse 55% 30% at 100% 100%, rgba(212,175,55,.055), transparent 75%);
+    }
+    .app { width: min(100% - 2rem, 510px); margin-inline: auto; padding-block: 1.2rem 2rem; }
+
+    /* ---------- Header ---------- */
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: .4rem 1.35rem; }
+    .brand { display: flex; align-items: center; gap: .65rem; }
+    .mark { width: 36px; height: 36px; color: var(--gold); opacity: .92; }
+    .mark svg { width: 100%; height: 100%; }
+    .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
+    .brand-text strong { font-size: 1rem; font-weight: 800; letter-spacing: -.02em; }
+    .brand-text small { font-family: ui-monospace, monospace; font-size: .52rem; letter-spacing: .12em; color: var(--accent); }
+    .icon-btn {
+      width: 36px; height: 36px; display: grid; place-items: center; flex: none;
+      border-radius: 11px; color: var(--muted); background: rgba(255,255,255,.025);
+      border: 1px solid var(--line); transition: color .25s, border-color .25s, transform .35s var(--ease);
+    }
+    .icon-btn svg { width: 17px; height: 17px; }
+    .icon-btn:hover { color: var(--gold); border-color: var(--line-hi); transform: rotate(-18deg); }
+
+    /* ---------- Surfaces & entrances ---------- */
+    .surface {
+      position: relative; background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--r); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+      box-shadow: 0 20px 50px rgba(0,0,0,.3); transition: background .5s ease, border-color .5s ease;
+    }
+    .surface::before {
+      content: ''; position: absolute; inset-block-start: 0; inset-inline: 18%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(212,175,55,.45), transparent);
+    }
+    .enter { animation: rise .6s var(--ease) both; animation-delay: var(--d, 0ms); }
+
+    /* ---------- Setup ---------- */
+    .intro { padding: .6rem .15rem 1.4rem; }
+    .kicker { display: inline-flex; align-items: center; gap: .5rem; font-size: .72rem; font-weight: 700; color: var(--accent); }
+    .kicker i { width: 18px; height: 1px; background: var(--gold); }
+    .intro h1 { margin: .5rem 0 .3rem; font-size: clamp(1.85rem, 8vw, 2.5rem); font-weight: 800; line-height: 1.25; letter-spacing: -.045em; }
+    .intro p { margin: 0; color: var(--muted); font-size: .86rem; }
+    .form { padding: clamp(1.05rem, 5vw, 1.55rem); }
+    .field-block + .field-block { margin-top: 1.25rem; }
+    .label { display: block; margin-bottom: .5rem; font-size: .78rem; font-weight: 700; color: #d3dccf; }
+    .form input, .form select {
+      width: 100%; min-height: 47px; padding: .5rem .8rem; color: var(--text);
+      background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px;
+      outline: none; color-scheme: dark; transition: border-color .25s, box-shadow .25s, background .25s;
+    }
+    .form input[type="number"] { font-family: ui-monospace, monospace; }
+    .form input:hover, .form select:hover { border-color: var(--line-hi); }
+    .form input:focus, .form select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .14); background: rgba(10,13,10,.82); }
+    .two { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .6rem; }
+    .choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .55rem; }
+    .choice {
+      display: flex; flex-direction: column; align-items: flex-start; gap: .05rem;
+      padding: .68rem .8rem; text-align: start; color: var(--muted);
+      background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px;
+      transition: transform .25s var(--ease), border-color .25s, background .25s, color .25s;
+    }
+    .choice span { font-size: .84rem; font-weight: 700; }
+    .choice small { font-family: ui-monospace, monospace; font-size: .66rem; color: var(--faint); }
+    .choice:hover { transform: translateY(-2px); border-color: var(--line-hi); color: var(--text); }
+    .choice.is-selected {
+      color: var(--text); border-color: var(--accent);
+      background: linear-gradient(140deg, rgba(var(--accent-rgb), .30), rgba(10,13,10,.6));
+      box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .18);
+    }
+    .choice.is-selected small { color: var(--gold-soft); }
+    .choice:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .authority-grid .choice { flex-direction: row; align-items: center; gap: .5rem; }
+    .authority-grid .choice .ico { font-size: 1.1rem; line-height: 1; }
+    .divider { height: 1px; background: var(--line); margin: 1.3rem 0 0; }
+    .adjust { margin-top: 1.1rem; }
+    .adjust summary { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; cursor: pointer; list-style: none; }
+    .adjust summary::-webkit-details-marker { display: none; }
+    .adjust summary span { font-size: .78rem; font-weight: 700; color: #d3dccf; }
+    .adjust summary small { font-size: .66rem; color: var(--faint); }
+    .adjust summary:hover span { color: var(--accent); }
+    .adjust[open] summary span::after { content: ' −'; color: var(--accent); }
+    .adjust-body { padding-top: .9rem; }
+    .mini-field { display: flex; flex-direction: column; gap: .3rem; }
+    .mini-field + .mini-field { margin-top: .7rem; }
+    .adjust-body .two .mini-field + .mini-field { margin-top: 0; }
+    .mini-field > span { font-size: .72rem; font-weight: 600; color: var(--muted); }
+    .mini-field em { font-style: normal; color: var(--gold); }
+    .hint { margin: .55rem 0 0; font-size: .67rem; color: var(--faint); }
+    .preview {
+      display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+      margin-top: 1.2rem; padding: .75rem .9rem; border-radius: 12px;
+      background: rgba(var(--accent-rgb), .16); border: 1px solid var(--line);
+    }
+    .preview > div { display: flex; flex-direction: column; line-height: 1.4; }
+    .preview small { font-size: .66rem; color: var(--muted); }
+    .preview strong { font-size: .84rem; color: var(--gold-soft); font-weight: 700; }
+    .preview .manual { text-align: end; }
+    .cta {
+      width: 100%; min-height: 50px; margin-top: 1.1rem;
+      display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+      border: 1px solid rgba(var(--accent-rgb), .5); border-radius: 12px;
+      color: #12160f; background: linear-gradient(135deg, var(--cta-a), var(--cta-b));
+      font-weight: 800; font-size: .9rem; box-shadow: 0 10px 25px rgba(var(--accent-rgb), .25);
+      transition: transform .25s var(--ease), box-shadow .25s, filter .25s;
+    }
+    .cta svg { width: 18px; height: 18px; transition: transform .25s var(--ease); }
+    .cta:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(var(--accent-rgb), .38); filter: brightness(1.06); }
+    .cta:hover svg { transform: translateX(-4px); }
+    .cta:active { transform: translateY(0); }
+
+    /* ---------- Dashboard ---------- */
+    .dash-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .5rem .1rem 1rem; }
+    .status {
+      display: inline-flex; align-items: center; gap: .45rem; padding: .3rem .7rem;
+      border-radius: 99px; font-size: .72rem; font-weight: 700; color: var(--accent);
+      background: rgba(var(--accent-rgb), .18); border: 1px solid var(--line);
+    }
+    .status .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+    .status.is-urgent { color: var(--gold); border-color: rgba(212,175,55,.35); background: rgba(212,175,55,.08); }
+    .status.is-done { color: #bfe4ae; border-color: rgba(191,228,174,.35); background: rgba(191,228,174,.08); }
+    .status.is-pending { color: var(--muted); }
+    .qual-label { font-size: .72rem; color: var(--faint); }
+    .hero { padding: clamp(1.2rem, 5vw, 1.7rem) 1rem 1.1rem; text-align: center; }
+    .hero-label { margin: 0 0 1.25rem; font-size: .78rem; font-weight: 600; color: var(--muted); }
+    .digits { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); }
+    .digit { display: flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 0; }
+    .digit + .digit { border-inline-start: 1px solid rgba(var(--accent-rgb), .2); }
+    .digit strong {
+      display: block; font-size: clamp(1.05rem, 6.2vw, 1.72rem); font-weight: 500;
+      line-height: 1.1; color: var(--text); text-shadow: 0 0 18px rgba(var(--accent-rgb), .25);
+    }
+    .digit span { font-size: .6rem; color: var(--faint); }
+    .digit--gold strong { color: var(--gold-soft); text-shadow: 0 0 18px rgba(212,175,55,.25); }
+    .digit strong.tick { animation: digitTick .4s var(--ease); }
+    .hero-foot { margin: 1.2rem 0 0; font-size: .72rem; color: var(--muted); }
+    .hero-foot strong { color: var(--gold-soft); font-weight: 700; }
+
+    .card { margin-top: .85rem; padding: 1.15rem 1.2rem; border: 1px solid var(--line); border-radius: var(--r); background: rgba(var(--accent-rgb), .07); transition: background .5s ease, border-color .5s ease; }
+    .progress-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: .85rem; }
+    .progress-top > div { display: flex; flex-direction: column; line-height: 1.25; }
+    .mini-label { font-size: .68rem; color: var(--muted); }
+    #pct { font-size: 1.5rem; color: var(--text); font-weight: 500; }
+    .bar-note { font-size: .72rem; color: var(--accent); font-weight: 700; }
+    .bar { position: relative; height: 6px; border-radius: 99px; overflow: hidden; background: rgba(var(--accent-rgb), .16); }
+    .bar > span {
+      display: block; width: 0; height: 100%; border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent-deep), var(--accent) 65%, var(--gold));
+      box-shadow: 0 0 12px rgba(var(--accent-rgb), .35); transition: width 1.1s var(--ease);
+    }
+    .bar > span::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+      transform: translateX(100%); animation: shimmer 3.5s ease-in-out infinite;
+    }
+    .dates { display: flex; align-items: center; gap: .8rem; margin-top: 1rem; }
+    .dates > div { display: flex; flex-direction: column; line-height: 1.4; }
+    .dates small { font-size: .64rem; color: var(--faint); }
+    .dates strong { font-size: .76rem; font-weight: 600; color: #cfd8ca; }
+    .dash-line { flex: 1; height: 1px; background: repeating-linear-gradient(90deg, var(--line-hi) 0 4px, transparent 4px 8px); }
+
+    /* Daily verse */
+    .verse-card {
+      position: relative; margin-top: .85rem; padding: 1.15rem 1.25rem;
+      border: 1px solid rgba(212,175,55,.2); border-inline-start: 2px solid var(--gold);
+      border-radius: 14px; background: linear-gradient(150deg, rgba(212,175,55,.06), rgba(28,34,28,.45));
+    }
+    .verse-head { display: flex; align-items: center; gap: .45rem; font-size: .72rem; font-weight: 700; color: var(--gold); }
+    .verse-icon { font-size: .85rem; opacity: .85; }
+    .verse-ref { margin-inline-start: auto; font-size: .66rem; font-weight: 500; color: var(--faint); }
+    .verse-text {
+      margin: .7rem 0 .85rem; color: #f1f2e9; font-family: 'Amiri', 'Traditional Arabic', serif;
+      font-size: clamp(1.25rem, 5.5vw, 1.55rem); line-height: 2; text-align: center;
+    }
+    .verse-foot { display: flex; align-items: center; gap: .7rem; }
+    .verse-rule { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(212,175,55,.32), transparent); }
+    .verse-foot .mono { font-size: .62rem; color: var(--faint); }
+    .verse-card.is-fresh .verse-text, .verse-card.is-fresh .verse-head, .verse-card.is-fresh .verse-foot { animation: verseIn .85s var(--ease) both; }
+    .verse-card.is-fresh .verse-head { animation-delay: .04s; }
+    .verse-card.is-fresh .verse-foot { animation-delay: .12s; }
+
+    .text-btn {
+      display: block; margin: 1.35rem auto .5rem; padding: .45rem .8rem; color: var(--muted);
+      background: none; border: 0; font-size: .76rem; font-weight: 700; transition: color .25s;
+    }
+    .text-btn:hover { color: var(--accent); }
+    /* ---------- Footer: live counters + developer credits ---------- */
+    .foot { margin-top: 1.7rem; display: flex; flex-direction: column; align-items: center; gap: .55rem; text-align: center; font-size: .65rem; color: var(--faint); }
+    .visitor-strip {
+      display: inline-flex; align-items: center; gap: .6rem; flex-wrap: wrap; justify-content: center;
+      padding: .4rem .8rem; border-radius: 99px; font-size: .66rem;
+      background: rgba(var(--accent-rgb), .09); border: 1px solid var(--line);
+    }
+    .visitor-strip i { width: 1px; height: 12px; background: var(--line-hi); }
+    .visitor-strip strong { color: var(--gold-soft); font-family: ui-monospace, monospace; font-weight: 600; font-size: .72rem; }
+    .credit { display: flex; align-items: center; justify-content: center; gap: .5rem; flex-wrap: wrap; font-size: .66rem; color: var(--muted); }
+    .credit strong { color: var(--text); font-weight: 700; direction: ltr; unicode-bidi: embed; display: inline-block; }
+    .credit-links { display: inline-flex; align-items: center; gap: .35rem; }
+    .credit-links a {
+      width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px;
+      color: var(--faint); background: rgba(255,255,255,.02); border: 1px solid var(--line);
+      transition: color .25s, border-color .25s, transform .25s var(--ease);
+    }
+    .credit-links a:hover { color: var(--gold); border-color: var(--line-hi); transform: translateY(-2px); }
+    .credit-links svg { width: 13px; height: 13px; fill: currentColor; }
+    .foot-note { margin: 0; font-size: .62rem; }
+
+    /* Install prompt — small, dismissible, never blocks the UI */
+    .install-banner {
+      position: fixed; z-index: 20; inset-block-end: 1rem; inset-inline: 1rem;
+      width: min(100% - 2rem, 460px); margin-inline: auto;
+      display: flex; align-items: center; gap: .7rem; padding: .7rem .8rem;
+      border-radius: 14px; background: rgba(23, 29, 23, .96);
+      border: 1px solid var(--line-hi); box-shadow: 0 16px 40px rgba(0,0,0,.55);
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      animation: rise .5s var(--ease) both;
+    }
+    .install-icon { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 9px; font-size: 1rem; color: var(--gold); background: rgba(212,175,55,.1); border: 1px solid rgba(212,175,55,.25); }
+    .install-banner > div { flex: 1; display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+    .install-banner strong { font-size: .78rem; }
+    .install-banner small { font-size: .63rem; color: var(--muted); }
+    .install-banner button { border: 0; border-radius: 9px; font-weight: 800; font-size: .72rem; transition: .2s var(--ease); }
+    #installBtn { padding: .45rem .8rem; color: #12160f; background: linear-gradient(135deg, var(--cta-a), var(--cta-b)); }
+    #installBtn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    #installDismiss { width: 24px; height: 24px; flex: none; color: var(--faint); background: transparent; font-size: 1rem; line-height: 1; }
+    #installDismiss:hover { color: var(--text); }
+
+    .toast {
+      position: fixed; z-index: 10; inset-block-end: 1.2rem; inset-inline: 1rem;
+      width: max-content; max-width: calc(100% - 2rem); margin-inline: auto;
+      padding: .6rem 1rem; border-radius: 10px; font-size: .78rem; font-weight: 700;
+      color: var(--text); background: #1e261e; border: 1px solid var(--line-hi);
+      box-shadow: 0 12px 30px rgba(0,0,0,.45); opacity: 0; transform: translateY(12px);
+      pointer-events: none; transition: .35s var(--ease);
+    }
+    .toast.is-visible { opacity: 1; transform: translateY(0); }
+    .noscript { padding: 2rem; text-align: center; color: var(--gold); }
+
+    /* ---------- Motion ---------- */
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    @keyframes digitTick { 0% { opacity: .4; transform: translateY(5px) scale(.92); filter: blur(2px); } 100% { opacity: 1; transform: none; filter: none; } }
+    @keyframes verseIn { from { opacity: 0; transform: translateY(9px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+    @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 currentColor; } 50% { box-shadow: 0 0 0 5px transparent; } }
+    @keyframes shimmer { 0%,60% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+    @media (max-width: 360px) {
+      .app { width: min(100% - 1rem, 510px); }
+      .digit strong { font-size: 1rem; }
+      .digit span { font-size: .55rem; }
+      .two, .authority-grid { grid-template-columns: 1fr; }
+      .adjust-body .two .mini-field + .mini-field { margin-top: .7rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="app">
+
+    <!-- ============ Header ============ -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40" fill="none">
+            <path d="M20 3.5 34 9v11.3c0 8.6-5.9 14.3-14 17.2-8.1-2.9-14-8.6-14-17.2V9l14-5.5Z" stroke="currentColor" stroke-width="1.6"/>
+            <path d="m20 12 1.7 3.6 3.9.6-2.8 2.7.7 3.9-3.5-1.9-3.5 1.9.7-3.9-2.8-2.7 3.9-.6L20 12Z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <strong>عدّاد الرديف</strong>
+          <small>EL-GEISH &amp; EL-SHORTA</small>
+        </span>
+      </div>
+      <button id="editTop" class="icon-btn hidden" type="button" aria-label="تعديل البيانات" title="تعديل البيانات">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m15 5 4 4M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/>
+        </svg>
+      </button>
+    </header>
+
+    <main>
+      <!-- ============ Setup ============ -->
+      <section id="setupView" class="view" aria-labelledby="setupTitle">
+        <div class="intro enter" style="--d:0ms">
+          <span class="kicker"><i></i> بسم الله</span>
+          <h1 id="setupTitle">كم باقي يا بطل؟</h1>
+          <p>حدّد جهة الخدمة والدفعة، والباقي علينا.</p>
+        </div>
+
+        <form id="setupForm" class="surface form enter" style="--d:80ms" novalidate>
+          <!-- Authority -->
+          <div class="field-block">
+            <span class="label">جهة الخدمة</span>
+            <div class="choice-grid authority-grid" id="authorities" role="radiogroup" aria-label="جهة الخدمة">
+              <button type="button" class="choice" data-value="army" aria-pressed="false"><span class="ico">🪖</span><span>القوات المسلحة</span></button>
+              <button type="button" class="choice" data-value="police" aria-pressed="false"><span class="ico">🚓</span><span>الشرطة</span></button>
+            </div>
+          </div>
+
+          <!-- Batch / intake month + year -->
+          <div class="field-block">
+            <span class="label" id="monthLabel">الدفعة وسنة التجنيد</span>
+            <div class="two">
+              <label class="mini-field">
+                <span id="monthFieldLabel">الدفعة</span>
+                <select id="intakeMonth"></select>
+              </label>
+              <label class="mini-field">
+                <span>السنة</span>
+                <select id="batchYear"></select>
+              </label>
+            </div>
+            <p class="hint" id="monthHint">—</p>
+          </div>
+
+          <!-- Qualification -->
+          <div class="field-block">
+            <span class="label">المؤهل الدراسي</span>
+            <div class="choice-grid" id="choices" role="radiogroup" aria-label="المؤهل الدراسي">
+              <button type="button" class="choice" data-value="high" aria-pressed="false"><span>مؤهل عالي</span><small>١٢ شهر · سنة</small></button>
+              <button type="button" class="choice" data-value="above" aria-pressed="false"><span>فوق متوسط</span><small>١٨ شهر · ١.٥ سنة</small></button>
+              <button type="button" class="choice" data-value="medium" aria-pressed="false"><span>متوسط</span><small>٢٤ شهر · سنتين</small></button>
+              <button type="button" class="choice" data-value="none" aria-pressed="false"><span>بدون مؤهل</span><small>٣٦ شهر · ٣ سنين</small></button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Manual adjustments -->
+          <details class="adjust" id="adjustBox">
+            <summary><span>تعديل تاريخ الرديف</span><small>أيام زيادة / تخفيض أو تاريخ يدوي</small></summary>
+            <div class="adjust-body">
+              <div class="two">
+                <label class="mini-field"><span>أيام زيادة <em>+</em></span><input id="extraDays" type="number" dir="ltr" inputmode="numeric" min="0" max="365" value="0" /></label>
+                <label class="mini-field"><span>أيام تخفيض <em>−</em></span><input id="deductionDays" type="number" dir="ltr" inputmode="numeric" min="0" max="365" value="0" /></label>
+              </div>
+              <label class="mini-field" style="margin-top:.7rem"><span>أو حدد تاريخ الرديف بنفسك</span><input id="manualDate" type="date" dir="ltr" /></label>
+              <p class="hint" id="adjustHint">التاريخ اليدوي يتقدّم على كل الحسابات التلقائية.</p>
+            </div>
+          </details>
+
+          <div class="preview">
+            <div><small>بداية العد الرسمي</small><strong id="countStartPreview">—</strong></div>
+            <div class="manual"><small>تاريخ الرديف</small><strong id="dischargePreview">—</strong></div>
+          </div>
+
+          <button class="cta" type="submit">
+            <span>ابدأ العدّ</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+      </section>
+
+      <!-- ============ Dashboard ============ -->
+      <section id="dashView" class="view hidden" aria-labelledby="dashTitle">
+        <div class="dash-head enter" style="--d:0ms">
+          <span id="status" class="status"><i class="dot"></i> الخدمة جارية</span>
+          <span id="qualLabel" class="qual-label">—</span>
+        </div>
+
+        <div class="hero surface enter" style="--d:70ms">
+          <h2 id="dashTitle" class="hero-label">الوقت المتبقي للرديف</h2>
+          <div class="digits" id="digits" aria-live="off">
+            <div class="digit"><strong id="dMo" class="mono">00</strong><span>شهر</span></div>
+            <div class="digit"><strong id="dD" class="mono">00</strong><span>يوم</span></div>
+            <div class="digit"><strong id="dH" class="mono">00</strong><span>ساعة</span></div>
+            <div class="digit"><strong id="dMi" class="mono">00</strong><span>دقيقة</span></div>
+            <div class="digit digit--gold"><strong id="dS" class="mono">00</strong><span>ثانية</span></div>
+          </div>
+          <p id="heroFoot" class="hero-foot">—</p>
+        </div>
+
+        <div class="card enter" style="--d:140ms">
+          <div class="progress-top">
+            <div><span class="mini-label">تقدّم الخدمة</span><strong id="pct" class="mono">0%</strong></div>
+            <span id="barNote" class="bar-note">—</span>
+          </div>
+          <div class="bar"><span id="barFill"></span></div>
+          <div class="dates">
+            <div><small>بداية العد الرسمي</small><strong id="startText">—</strong></div>
+            <span class="dash-line" aria-hidden="true"></span>
+            <div><small>الرديف</small><strong id="endText">—</strong></div>
+          </div>
+        </div>
+
+        <article class="verse-card enter" style="--d:210ms" id="verseCard">
+          <div class="verse-head"><span class="verse-icon" aria-hidden="true">✦</span><span>آية اليوم</span><span id="verseRef" class="verse-ref">—</span></div>
+          <p id="verseText" class="verse-text" lang="ar">—</p>
+          <div class="verse-foot"><span class="verse-rule" aria-hidden="true"></span><span id="verseCounter" class="mono">—</span></div>
+        </article>
+
+        <button id="editBtn" class="text-btn enter" style="--d:260ms" type="button">تعديل جهة الخدمة والتواريخ</button>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="visitor-strip" aria-live="polite">
+        <span>زيارات اليوم <strong id="visitsToday">—</strong></span>
+        <i aria-hidden="true"></i>
+        <span>إجمالي الزيارات <strong id="visitsTotal">—</strong></span>
+      </div>
+      <div class="credit">
+        <span>Developed by <strong>Eid Yasser (0x3id)</strong></span>
+        <span class="credit-links">
+          <a href="https://github.com/0x3id" target="_blank" rel="noopener noreferrer" aria-label="GitHub" title="GitHub">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>
+          </a>
+          <a href="https://0x3id.github.io" target="_blank" rel="noopener noreferrer" aria-label="Portfolio" title="Portfolio">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.93 6h-2.95a15.7 15.7 0 0 0-1.38-3.56A8 8 0 0 1 18.93 8ZM12 4c.83 1.2 1.48 2.58 1.9 4h-3.8c.42-1.42 1.07-2.8 1.9-4ZM4.27 14a8 8 0 0 1 0-4h3.38a17 17 0 0 0 0 4H4.27Zm.8 2h2.95c.33 1.32.8 2.55 1.38 3.56A8 8 0 0 1 5.07 16Zm2.95-8H5.07a8 8 0 0 1 4.33-3.56A15.7 15.7 0 0 0 8.02 8ZM12 20c-.83-1.2-1.48-2.58-1.9-4h3.8c-.42 1.42-1.07 2.8-1.9 4Zm2.32-6H9.68a13.6 13.6 0 0 1 0-4h4.64a13.6 13.6 0 0 1 0 4Zm.35 5.56c.58-1.01 1.05-2.24 1.38-3.56h2.95a8 8 0 0 1-4.33 3.56ZM16.35 14a17 17 0 0 0 0-4h3.38a8 8 0 0 1 0 4h-3.38Z"/></svg>
+          </a>
+          <a href="https://www.linkedin.com/in/0x3id/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.45 2H3.55A1.55 1.55 0 0 0 2 3.55v16.9A1.55 1.55 0 0 0 3.55 22h16.9A1.55 1.55 0 0 0 22 20.45V3.55A1.55 1.55 0 0 0 20.45 2ZM8 18.5H5V9.5h3v9ZM6.5 8.2a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6ZM18.5 18.5h-3v-4.4c0-1.05-.02-2.4-1.46-2.4-1.47 0-1.7 1.14-1.7 2.32v4.48H9.4V9.5h2.87v1.23h.04a3.15 3.15 0 0 1 2.83-1.55c3.03 0 3.36 1.99 3.36 4.58v4.74Z"/></svg>
+          </a>
+        </span>
+      </div>
+      <p class="foot-note">بياناتك محفوظة على جهازك فقط · التاريخ الرسمي عند جهة الخدمة</p>
+    </footer>
+  </div>
+
+  <div id="installBanner" class="install-banner hidden" role="status">
+    <span class="install-icon" aria-hidden="true">⬇</span>
+    <div><strong>ثبّت التطبيق</strong><small>افتحه من شاشة الهاتف مثل أي تطبيق</small></div>
+    <button id="installBtn" type="button">تثبيت</button>
+    <button id="installDismiss" type="button" aria-label="إخفاء">×</button>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <noscript><p class="noscript">يرجى تفعيل JavaScript لتشغيل العدّاد.</p></noscript>
+
+  <script>
+  /* =========================================================================
+     El-Geish & El-Shorta Countdown — single-file app logic
+     1. Constants   2. Helpers   3. Service rules   4. Storage
+     5. Rendering   6. Events & boot
+     ========================================================================= */
+
+  'use strict';
+
+  /* ---------- 1. Constants ---------- */
+  const STORAGE_KEY = 'elGeishCountdown.authority.v1';
+  const DAY_MS = 86400000;
+
+  // Army: quarterly batches. Police: intake months; official count = 25th.
+  const MONTHS = {
+    army:   [0, 3, 6, 9],   // January, April, July, October
+    police: [1, 4, 7, 10]   // February, May, August, November
+  };
+
+  // For the army, the official count starts on the 1st of the month +2
+  // after the batch month (after the initial training window). This yields
+  // the familiar discharge months 1/3, 1/6, 1/9, 1/12.
+  const ARMY_COUNT_OFFSET = 2;
+  const POLICE_COUNT_DAY = 25;
+
+  const AUTHORITIES = { army: 'القوات المسلحة', police: 'الشرطة' };
+
+  const QUALIFICATIONS = {
+    high:   { months: 12, label: 'مؤهل عالي' },
+    above:  { months: 18, label: 'فوق متوسط' },
+    medium: { months: 24, label: 'متوسط' },
+    none:   { months: 36, label: 'بدون مؤهل' }
+  };
+
+  const VERSES = [
+    { text: 'إِنَّ مَعَ الْعُسْرِ يُسْرًا', ref: 'الشرح · ٦' },
+    { text: 'إِنَّ اللهَ مَعَ الصَّابِرِينَ', ref: 'البقرة · ١٥٣' },
+    { text: 'وَلَا تَيْأَسُوا مِن رَّوْحِ اللهِ', ref: 'يوسف · ٨٧' },
+    { text: 'فَاذْكُرُونِي أَذْكُرْكُمْ', ref: 'البقرة · ١٥٢' },
+    { text: 'وَعَسَىٰ أَن تَكْرَهُوا شَيْئًا وَهُوَ خَيْرٌ لَّكُمْ', ref: 'البقرة · ٢١٦' },
+    { text: 'لَا يُكَلِّفُ اللهُ نَفْسًا إِلَّا وُسْعَهَا', ref: 'البقرة · ٢٨٦' },
+    { text: 'رَبَّنَا أَفْرِغْ عَلَيْنَا صَبْرًا وَثَبِّتْ أَقْدَامَنَا', ref: 'البقرة · ٢٥٠' },
+    { text: 'وَمَن يَتَّقِ اللهَ يَجْعَل لَّهُ مَخْرَجًا', ref: 'الطلاق · ٢' },
+    { text: 'وَمَا النَّصْرُ إِلَّا مِنْ عِندِ اللهِ', ref: 'آل عمران · ١٢٦' },
+    { text: 'أَلَا إِنَّ نَصْرَ اللهِ قَرِيبٌ', ref: 'البقرة · ٢١٤' },
+    { text: 'اللهُ لَطِيفٌ بِعِبَادِهِ', ref: 'الشورى · ١٩' },
+    { text: 'فَإِذَا فَرَغْتَ فَانصَبْ ۝ وَإِلَىٰ رَبِّكَ فَارْغَبْ', ref: 'الشرح · ٧-٨' }
+  ];
+
+  const AR_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+                     'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+  const el = {
+    views:      { setup: $('#setupView'), dash: $('#dashView') },
+    form:       $('#setupForm'),
+    authorities:$$('#authorities .choice'),
+    intakeMonth:$('#intakeMonth'), batchYear: $('#batchYear'),
+    monthLabel: $('#monthLabel'), monthFieldLabel: $('#monthFieldLabel'), monthHint: $('#monthHint'),
+    choices:    $$('#choices .choice'),
+    extraDays:  $('#extraDays'), deduction: $('#deductionDays'),
+    manualDate: $('#manualDate'), adjustBox: $('#adjustBox'), adjustHint: $('#adjustHint'),
+    countPreview: $('#countStartPreview'), dischargePreview: $('#dischargePreview'),
+
+    editTop: $('#editTop'), editBtn: $('#editBtn'),
+    status: $('#status'), qualLabel: $('#qualLabel'),
+    digit: { mo: $('#dMo'), d: $('#dD'), h: $('#dH'), mi: $('#dMi'), s: $('#dS') },
+    heroFoot: $('#heroFoot'),
+    pct: $('#pct'), barFill: $('#barFill'), barNote: $('#barNote'),
+    startText: $('#startText'), endText: $('#endText'),
+
+    verseCard: $('#verseCard'), verseText: $('#verseText'),
+    verseRef: $('#verseRef'), verseCounter: $('#verseCounter'), toast: $('#toast'),
+
+    visitsToday: $('#visitsToday'), visitsTotal: $('#visitsTotal'),
+    installBanner: $('#installBanner'), installBtn: $('#installBtn'), installDismiss: $('#installDismiss')
+  };
+
+  let profile = null;
+  let selectedAuthority = 'army';
+  let selectedQualification = 'high';
+  let timer = null, toastTimer = null, verseDayKey = null, firstPaint = true;
+
+  /* ---------- 2. Helpers ---------- */
+  const fmt = n => new Intl.NumberFormat('en-US').format(Math.round(n));
+  const pad2 = n => String(n).padStart(2, '0');
+  const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+
+  function readInt(input, min, max, fallback) {
+    const n = Number.parseInt(input.value, 10);
+    return Number.isFinite(n) ? clamp(n, min, max) : fallback;
+  }
+
+  function parseDate(value) {
+    const [y, m, d] = String(value || '').split('-').map(Number);
+    return y && m && d ? new Date(Date.UTC(y, m - 1, d)) : null;
+  }
+
+  function daysInMonthUTC(year, monthIndex) {
+    return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  }
+
+  function addMonthsUTC(date, months) {
+    const result = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
+    result.setUTCDate(Math.min(date.getUTCDate(), daysInMonthUTC(result.getUTCFullYear(), result.getUTCMonth())));
+    return result;
+  }
+
+  const addDays = (date, days) => new Date(date.getTime() + days * DAY_MS);
+
+  function formatArabicDate(date) {
+    return `${date.getUTCDate()} ${AR_MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+  }
+
+  function localDayKey(date) {
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+  }
+
+  function defaultProfile() {
+    return {
+      authority: 'army', intakeMonth: 0, batchYear: new Date().getFullYear(),
+      qualification: 'high', extraDays: 0, deductionDays: 0, manualDate: ''
+    };
+  }
+
+  /* ---------- 3. Service rules ---------- */
+  /**
+   * Official count start:
+   *   army   -> 1st of (intake month + 2)
+   *   police -> the 25th of the chosen intake month
+   * Discharge = count start + qualification duration, then +/- adjustment
+   * days, unless a manual date is set (manual always wins).
+   */
+  function computeSchedule(p) {
+    const year = Number(p.batchYear);
+    const month = Number(p.intakeMonth);
+
+    const countStart = p.authority === 'police'
+      ? new Date(Date.UTC(year, month, POLICE_COUNT_DAY))
+      : addMonthsUTC(new Date(Date.UTC(year, month, 1)), ARMY_COUNT_OFFSET);
+
+    let discharge = addMonthsUTC(countStart, QUALIFICATIONS[p.qualification].months);
+    if (!p.manualDate) discharge = addDays(discharge, (p.extraDays || 0) - (p.deductionDays || 0));
+    else discharge = parseDate(p.manualDate) || discharge;
+
+    if (discharge.getTime() <= countStart.getTime()) discharge = addDays(countStart, 1);
+
+    return {
+      countStart, discharge,
+      totalMs: discharge.getTime() - countStart.getTime(),
+      totalDays: (discharge.getTime() - countStart.getTime()) / DAY_MS
+    };
+  }
+
+  /** Calendar-aware time difference; years are folded into months by the caller. */
+  function diffCalendar(fromMs, toMs) {
+    const from = new Date(fromMs), to = new Date(toMs);
+    let y  = to.getUTCFullYear() - from.getUTCFullYear();
+    let mo = to.getUTCMonth() - from.getUTCMonth();
+    let d  = to.getUTCDate() - from.getUTCDate();
+    let h  = to.getUTCHours() - from.getUTCHours();
+    let mi = to.getUTCMinutes() - from.getUTCMinutes();
+    let s  = to.getUTCSeconds() - from.getUTCSeconds();
+
+    if (s < 0)  { s += 60; mi--; }
+    if (mi < 0) { mi += 60; h--; }
+    if (h < 0)  { h += 24; d--; }
+
+    let borrowY = to.getUTCFullYear(), borrowM = to.getUTCMonth();
+    while (d < 0) {
+      borrowM -= 1;
+      if (borrowM < 0) { borrowM = 11; borrowY -= 1; }
+      d += daysInMonthUTC(borrowY, borrowM);
+      mo -= 1;
+    }
+    while (mo < 0) { mo += 12; y -= 1; }
+
+    return { y: Math.max(0, y), mo: Math.max(0, mo), d: Math.max(0, d),
+             h: Math.max(0, h), mi: Math.max(0, mi), s: Math.max(0, s) };
+  }
+
+  function verseIndexFor(date) {
+    const dayNumber = Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS);
+    return ((dayNumber % VERSES.length) + VERSES.length) % VERSES.length;
+  }
+
+  /* ---------- 4. Storage ---------- */
+  function loadProfile() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data || !QUALIFICATIONS[data.qualification] || !AUTHORITIES[data.authority]) return null;
+      if (!MONTHS[data.authority].includes(Number(data.intakeMonth))) return null;
+      return { ...defaultProfile(), ...data };
+    } catch (error) {
+      console.warn('Unable to read saved profile:', error);
+      return null;
+    }
+  }
+
+  function saveProfile(p) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); return true; }
+    catch (error) { console.warn('Unable to save profile:', error); return false; }
+  }
+
+  /* ---------- 5. Rendering ---------- */
+  function showView(name) {
+    el.views.setup.classList.toggle('hidden', name !== 'setup');
+    el.views.dash.classList.toggle('hidden', name !== 'dash');
+    el.editTop.classList.toggle('hidden', name !== 'dash');
+    $$('.enter', el.views[name]).forEach(node => {
+      node.classList.remove('enter');
+      void node.offsetWidth;
+      node.classList.add('enter');
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function toast(message) {
+    window.clearTimeout(toastTimer);
+    el.toast.textContent = message;
+    el.toast.classList.add('is-visible');
+    toastTimer = window.setTimeout(() => el.toast.classList.remove('is-visible'), 2400);
+  }
+
+  function renderChoices() {
+    el.authorities.forEach(btn => {
+      const active = btn.dataset.value === selectedAuthority;
+      btn.classList.toggle('is-selected', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+    el.choices.forEach(btn => {
+      const active = btn.dataset.value === selectedQualification;
+      btn.classList.toggle('is-selected', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  /** Rebuild month options when the authority changes. */
+  function populateMonths(selected) {
+    const values = MONTHS[selectedAuthority];
+    el.intakeMonth.innerHTML = values.map(m => {
+      const label = selectedAuthority === 'police' ? `شهر ${AR_MONTHS[m]}` : `دفعة ${AR_MONTHS[m]}`;
+      return `<option value="${m}">${label}</option>`;
+    }).join('');
+    el.intakeMonth.value = String(values.includes(Number(selected)) ? Number(selected) : values[0]);
+
+    const police = selectedAuthority === 'police';
+    el.monthLabel.textContent = police ? 'شهر الدخول وسنة التجنيد' : 'الدفعة وسنة التجنيد';
+    el.monthFieldLabel.textContent = police ? 'شهر الدخول' : 'الدفعة';
+    el.monthHint.textContent = police
+      ? 'العد الرسمي للشرطة يبدأ يوم ٢٥ من الشهر المختار.'
+      : 'العد الميري يبدأ من أول الشهر الذي يلي شهرَي الدفعة.';
+    document.documentElement.dataset.authority = selectedAuthority;
+  }
+
+  function fillForm(p) {
+    const data = p || defaultProfile();
+    selectedAuthority = data.authority || 'army';
+    selectedQualification = data.qualification || 'high';
+    populateMonths(data.intakeMonth);
+    el.batchYear.value = String(data.batchYear || new Date().getFullYear());
+    el.extraDays.value = data.extraDays ?? 0;
+    el.deduction.value = data.deductionDays ?? 0;
+    el.manualDate.value = data.manualDate || '';
+    renderChoices();
+    if (data.manualDate || data.extraDays || data.deductionDays) el.adjustBox.open = true;
+    updatePreview();
+  }
+
+  function updatePreview() {
+    const draft = {
+      authority: selectedAuthority,
+      intakeMonth: Number(el.intakeMonth.value),
+      batchYear: Number(el.batchYear.value),
+      qualification: selectedQualification,
+      extraDays: readInt(el.extraDays, 0, 365, 0),
+      deductionDays: readInt(el.deduction, 0, 365, 0),
+      manualDate: el.manualDate.value
+    };
+    const { countStart, discharge } = computeSchedule(draft);
+    el.countPreview.textContent = formatArabicDate(countStart);
+    el.dischargePreview.textContent = formatArabicDate(discharge);
+    el.adjustHint.textContent = draft.manualDate
+      ? 'تاريخ يدوي — يتقدّم على الزيادة أو التخفيض والحساب التلقائي.'
+      : 'التاريخ اليدوي يتقدّم على كل الحسابات التلقائية.';
+  }
+
+  function renderStatic(p) {
+    const { countStart, discharge } = computeSchedule(p);
+    el.qualLabel.textContent = `${AUTHORITIES[p.authority]} · ${QUALIFICATIONS[p.qualification].label}`;
+    el.startText.textContent = formatArabicDate(countStart);
+    el.endText.textContent = formatArabicDate(discharge);
+    verseDayKey = null;
+    firstPaint = true;
+  }
+
+  function setDigit(node, value) {
+    const text = pad2(value);
+    if (node.textContent === text) return;
+    node.textContent = text;
+    node.classList.remove('tick');
+    void node.offsetWidth;
+    node.classList.add('tick');
+  }
+
+  function rotateVerse(now) {
+    const key = localDayKey(now);
+    if (key === verseDayKey) return;
+    verseDayKey = key;
+    const index = verseIndexFor(now);
+    el.verseText.textContent = VERSES[index].text;
+    el.verseRef.textContent = VERSES[index].ref;
+    el.verseCounter.textContent = `${index + 1} / ${VERSES.length}`;
+    el.verseCard.classList.remove('is-fresh');
+    void el.verseCard.offsetWidth;
+    el.verseCard.classList.add('is-fresh');
+  }
+
+  function tick() {
+    if (!profile) return;
+    const now = new Date();
+    const nowMs = now.getTime();
+    const { countStart, discharge, totalMs } = computeSchedule(profile);
+
+    const pending = nowMs < countStart.getTime();
+    const finished = nowMs >= discharge.getTime();
+    const remainingMs = finished ? 0 : discharge.getTime() - nowMs;
+
+    const parts = finished ? { y: 0, mo: 0, d: 0, h: 0, mi: 0, s: 0 } : diffCalendar(nowMs, discharge.getTime());
+    setDigit(el.digit.mo, parts.y * 12 + parts.mo);
+    setDigit(el.digit.d, parts.d);
+    setDigit(el.digit.h, parts.h);
+    setDigit(el.digit.mi, parts.mi);
+    setDigit(el.digit.s, parts.s);
+
+    const pct = totalMs > 0 ? clamp(((nowMs - countStart.getTime()) / totalMs) * 100, 0, 100) : 0;
+    el.pct.textContent = `${Math.floor(pct)}%`;
+    if (firstPaint) {
+      firstPaint = false;
+      el.barFill.style.width = '0%';
+      requestAnimationFrame(() => requestAnimationFrame(() => { el.barFill.style.width = `${pct}%`; }));
+    } else {
+      el.barFill.style.width = `${pct}%`;
+    }
+    el.barNote.textContent = finished ? 'اكتملت المدة' : pending ? 'لم يبدأ العد بعد' : `${fmt(remainingMs / DAY_MS)} يوم متبقي`;
+
+    el.status.className = 'status';
+    if (finished) {
+      el.status.classList.add('is-done');
+      el.status.innerHTML = '<i class="dot"></i> مبروك، وصلت للرديف';
+      el.heroFoot.innerHTML = 'انتهت الخدمة — <strong>العوض جميل 🤲</strong>';
+    } else if (pending) {
+      el.status.classList.add('is-pending');
+      el.status.innerHTML = '<i class="dot"></i> لم يبدأ العد الرسمي';
+      el.heroFoot.innerHTML = 'العد يبدأ من <strong>' + formatArabicDate(countStart) + '</strong>';
+    } else if (remainingMs <= 30 * DAY_MS) {
+      el.status.classList.add('is-urgent');
+      el.status.innerHTML = '<i class="dot"></i> الرديف قريب';
+      el.heroFoot.innerHTML = 'أقل من شهر — <strong>جهّز شنطتك 🧳</strong>';
+    } else {
+      el.status.innerHTML = '<i class="dot"></i> الخدمة جارية';
+      el.heroFoot.innerHTML = 'كل ثانية أقرب للرديف — <strong>اصبر فالعوض جميل</strong>';
+    }
+
+    rotateVerse(now);
+  }
+
+  function stopTimer() { if (timer) window.clearInterval(timer); timer = null; }
+
+  function startDashboard(p) {
+    profile = p;
+    renderStatic(p);
+    showView('dash');
+    stopTimer();
+    tick();
+    timer = window.setInterval(tick, 1000);
+  }
+
+  /* ---------- PWA extras: visitor counters, install prompt, service worker ---------- */
+
+  const VISIT_STORAGE_KEY = 'elGeishCountdown.visits.v1';
+  const VISIT_SESSION_PREFIX = 'elGeishCountdown.visited.';
+  const COUNTER_NAMESPACE = 'elgeish-shorta-countdown';
+  const COUNTER_TIMEOUT = 4500;
+
+  function readVisitStore() {
+    try {
+      const data = JSON.parse(localStorage.getItem(VISIT_STORAGE_KEY) || '{}');
+      return {
+        total: Number(data.total) || 0,
+        days: (data.days && typeof data.days === 'object') ? data.days : {}
+      };
+    } catch (error) { return { total: 0, days: {} }; }
+  }
+
+  function writeVisitStore(store) {
+    try { localStorage.setItem(VISIT_STORAGE_KEY, JSON.stringify(store)); } catch (error) { /* storage blocked */ }
+  }
+
+  function bumpVisitStore(day) {
+    const store = readVisitStore();
+    store.total += 1;
+    store.days[day] = (Number(store.days[day]) || 0) + 1;
+    writeVisitStore(store);
+    return { total: store.total, today: store.days[day] };
+  }
+
+  function paintVisits(total, today) {
+    el.visitsTotal.textContent = fmt(total);
+    el.visitsToday.textContent = fmt(today);
+  }
+
+  async function getJson(url) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), COUNTER_TIMEOUT);
+    try {
+      const response = await fetch(url, { signal: controller.signal, cache: 'no-store', mode: 'cors' });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      return await response.json();
+    } finally { window.clearTimeout(timeout); }
+  }
+
+  function pickCount(data) {
+    const value = Number(data && (data.count ?? data.value ?? data.result ?? data.total));
+    return Number.isFinite(value) ? value : null;
+  }
+
+  /** Try the primary API, then a fallback; return null when offline/blocked. */
+  async function remoteHit(key) {
+    const name = encodeURIComponent(key);
+    const space = encodeURIComponent(COUNTER_NAMESPACE);
+    try {
+      const count = pickCount(await getJson(`https://api.counterapi.dev/v1/${space}/${name}/up`));
+      if (count !== null) return count;
+    } catch (error) { /* try fallback */ }
+    try {
+      const count = pickCount(await getJson(`https://api.countapi.xyz/hit/${space}/${name}`));
+      if (count !== null) return count;
+    } catch (error) { /* offline */ }
+    return null;
+  }
+
+  /** Local-first counters: instant offline numbers, remote numbers when reachable. */
+  async function initVisitors() {
+    const day = localDayKey(new Date());
+    const cached = readVisitStore();
+    paintVisits(cached.total, cached.days[day] || 0);
+
+    const sessionKey = VISIT_SESSION_PREFIX + day;
+    let alreadyCounted = false;
+    try { alreadyCounted = sessionStorage.getItem(sessionKey) === '1'; } catch (error) { /* no session storage */ }
+    if (alreadyCounted) return;
+
+    const local = bumpVisitStore(day);
+    paintVisits(local.total, local.today);
+    try { sessionStorage.setItem(sessionKey, '1'); } catch (error) { /* no session storage */ }
+
+    // Best-effort remote sync — never blocks or breaks the interface.
+    const [totalCount, dailyCount] = await Promise.all([remoteHit('total'), remoteHit('day-' + day)]);
+    if (totalCount === null && dailyCount === null) return;
+
+    const store = readVisitStore();
+    store.total = Math.max(store.total, totalCount ?? store.total);
+    store.days[day] = Math.max(store.days[day] || 0, dailyCount ?? (store.days[day] || 0));
+    writeVisitStore(store);
+    paintVisits(store.total, store.days[day]);
+  }
+
+  let deferredInstallPrompt = null;
+
+  function initInstallPrompt() {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (standalone) return;
+    let dismissed = false;
+    try { dismissed = sessionStorage.getItem('elGeishInstallDismissed') === '1'; } catch (error) { /* ignore */ }
+    if (dismissed) return;
+
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      el.installBanner.classList.remove('hidden');
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      el.installBanner.classList.add('hidden');
+      toast('تم تثبيت التطبيق ✅');
+    });
+
+    el.installBtn.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) {
+        toast('استخدم قائمة المتصفح لتثبيت التطبيق.');
+        return;
+      }
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice.catch(() => null);
+      if (choice && choice.outcome === 'accepted') toast('جارٍ التثبيت...');
+      deferredInstallPrompt = null;
+      el.installBanner.classList.add('hidden');
+    });
+
+    el.installDismiss.addEventListener('click', () => {
+      el.installBanner.classList.add('hidden');
+      try { sessionStorage.setItem('elGeishInstallDismissed', '1'); } catch (error) { /* ignore */ }
+    });
+  }
+
+  function initServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    const register = () => navigator.serviceWorker.register('./sw.js')
+      .catch(error => console.warn('Service worker registration failed:', error));
+    if (document.readyState === 'complete') register();
+    else window.addEventListener('load', register);
+  }
+
+  /* ---------- 6. Events & boot ---------- */
+  (function populateYears() {
+    const current = new Date().getFullYear();
+    for (let y = current - 5; y <= current + 1; y += 1) {
+      el.batchYear.insertAdjacentHTML('beforeend', `<option value="${y}">${y}</option>`);
+    }
+    el.batchYear.value = String(current);
+  })();
+
+  el.authorities.forEach(btn => btn.addEventListener('click', () => {
+    selectedAuthority = btn.dataset.value;
+    populateMonths(null);
+    renderChoices();
+    updatePreview();
+  }));
+
+  el.choices.forEach(btn => btn.addEventListener('click', () => {
+    selectedQualification = btn.dataset.value;
+    renderChoices();
+    updatePreview();
+  }));
+
+  [el.intakeMonth, el.batchYear, el.extraDays, el.deduction, el.manualDate]
+    .forEach(input => input.addEventListener('input', updatePreview));
+
+  el.form.addEventListener('submit', event => {
+    event.preventDefault();
+    const next = {
+      authority: selectedAuthority,
+      intakeMonth: Number(el.intakeMonth.value),
+      batchYear: Number(el.batchYear.value),
+      qualification: selectedQualification,
+      extraDays: readInt(el.extraDays, 0, 365, 0),
+      deductionDays: readInt(el.deduction, 0, 365, 0),
+      manualDate: el.manualDate.value || ''
+    };
+    if (!saveProfile(next)) { toast('تعذّر الحفظ في المتصفح.'); return; }
+    startDashboard(next);
+    toast('تم الحفظ — بالتوفيق عسكري 🫡');
+  });
+
+  const goToSetup = () => {
+    if (profile) fillForm(profile);
+    stopTimer();
+    showView('setup');
+  };
+  el.editTop.addEventListener('click', goToSetup);
+  el.editBtn.addEventListener('click', goToSetup);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && profile) tick();
+  });
+
+  window.addEventListener('storage', event => {
+    if (event.key !== STORAGE_KEY) return;
+    const saved = loadProfile();
+    if (saved) startDashboard(saved);
+    else { stopTimer(); profile = null; fillForm(defaultProfile()); showView('setup'); }
+  });
+
+  (function init() {
+    const saved = loadProfile();
+    const editShortcut = new URLSearchParams(window.location.search).has('edit');
+    if (saved && !editShortcut) { fillForm(saved); startDashboard(saved); }
+    else { fillForm(saved || defaultProfile()); showView('setup'); }
+    initVisitors();
+    initInstallPrompt();
+    initServiceWorker();
+  })();
+  </script>
+</body>
+</html>

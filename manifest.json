@@ -1,0 +1,51 @@
+{
+  "name": "عدّاد الجيش والشرطة — الرديف",
+  "short_name": "عدّاد الرديف",
+  "description": "متتبّق بسيط للخدمة العسكرية في القوات المسلحة والشرطة المصرية، مع آية كل يوم. يعمل بدون اتصال.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "ar",
+  "background_color": "#121412",
+  "theme_color": "#121412",
+  "categories": ["utilities", "lifestyle"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "حساب الرديف",
+      "short_name": "الرديف",
+      "description": "عدّل الدفعة أو شهر الدخول",
+      "url": "./?edit=1",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
